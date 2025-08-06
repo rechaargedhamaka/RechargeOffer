@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Mobile Recharge Offers</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+
+<h1>Mobile Recharge Offers</h1>
+<div id="offers">
+    <button onclick="showPayment('Jio', 199)">Jio ₹199 - 1.5GB/day 28 Days</button>
+    <button onclick="showPayment('Airtel', 299)">Airtel ₹299 - 2GB/day 28 Days</button>
+    <button onclick="showPayment('VI', 249)">VI ₹249 - 1.5GB/day 28 Days</button>
+    <button onclick="showPayment('BSNL', 199)">BSNL ₹199 - 2GB/day 28 Days</button>
+</div>
+
+<div id="payment" style="display:none;">
+    <h2 id="pay-title"></h2>
+    <div id="qrcode"></div>
+    <p>Scan QR in your UPI app to pay</p>
+    <input type="text" id="mobile" placeholder="Enter Mobile Number">
+    <button onclick="sendOrder()">I have paid</button>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
