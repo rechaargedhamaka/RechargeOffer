@@ -1,29 +1,214 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Mobile Recharge Offers</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <meta charset="UTF-8">
+  <title>UPI QR Generator - BlinkPay Style</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- QRCode.js library -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      font-family: "Segoe UI", sans-serif;
+      background: #fffceb;
+    }
+    header {
+      background: #fff;
+      border-bottom: 1px solid #eee;
+      padding: 12px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+    }
+    header .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      font-size: 20px;
+    }
+    header .brand-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: #f7cb45;
+    }
+    main {
+      max-width: 900px;
+      margin: 20px auto;
+      padding: 20px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    @media(max-width:768px){
+      main{grid-template-columns:1fr;}
+    }
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+      padding: 20px;
+    }
+    h2 {margin-top:0}
+    label {display:block; margin: 8px 0 4px; font-size:14px; font-weight:500;}
+    input, select {
+      width: 100%;
+      padding: 10px 12px;
+      font-size: 15px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+    }
+    button {
+      background: #2eb872;
+      color: #fff;
+      padding: 12px 18px;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-top: 12px;
+    }
+    button:hover {background:#26a463;}
+    .qr-box {
+      width: 100%;
+      aspect-ratio: 1/1;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      border:1px solid #ddd;
+      border-radius: 12px;
+      background:#fff;
+    }
+    .link-box {
+      margin-top: 10px;
+      font-size: 13px;
+      word-break: break-all;
+      background:#fafafa;
+      padding:8px;
+      border-radius:8px;
+    }
+  </style>
 </head>
 <body>
+  <header>
+    <div class="brand"><div class="brand-icon"></div> BlinkPay</div>
+    <div style="font-size:12px;color:#555;">India • UPI QR Generator</div>
+  </header>
 
-<h1>Mobile Recharge Offers</h1>
-<div id="offers">
-    <button onclick="showPayment('Jio', 199)">Jio ₹199 - 1.5GB/day 28 Days</button>
-    <button onclick="showPayment('Airtel', 299)">Airtel ₹299 - 2GB/day 28 Days</button>
-    <button onclick="showPayment('VI', 249)">VI ₹249 - 1.5GB/day 28 Days</button>
-    <button onclick="showPayment('BSNL', 199)">BSNL ₹199 - 2GB/day 28 Days</button>
-</div>
+  <main>
+    <!-- Left: Form -->
+    <div class="card">
+      <h2>पेमेंट QR बनाएं</h2>
+      <label for="payee">UPI ID या मोबाइल नंबर</label>
+      <input type="text" id="payee" placeholder="example@upi या 98XXXXXXXX">
 
-<div id="payment" style="display:none;">
-    <h2 id="pay-title"></h2>
-    <div id="qrcode"></div>
-    <p>Scan QR in your UPI app to pay</p>
-    <input type="text" id="mobile" placeholder="Enter Mobile Number">
-    <button onclick="sendOrder()">I have paid</button>
-</div>
+      <label for="handle">UPI Handle (अगर मोबाइल नंबर)</label>
+      <select id="handle">
+        <option value="upi">@upi</option>
+        <option value="okhdfcbank">@okhdfcbank</option>
+        <option value="ybl">@ybl</option>
+        <option value="axl">@axl</option>
+        <option value="ibl">@ibl</option>
+      </select>
 
-<script src="script.js"></script>
+      <label for="amount">राशि (₹)</label>
+      <input type="number" id="amount" placeholder="0.00">
+
+      <label for="name">Payee Name (optional)</label>
+      <input type="text" id="name">
+
+      <label for="note">नोट / विवरण (optional)</label>
+      <input type="text" id="note">
+
+      <button onclick="generateQR()">Generate QR</button>
+      <div id="error" style="color:red; margin-top:10px; font-size:14px;"></div>
+    </div>
+
+    <!-- Right: QR Preview -->
+    <div class="card">
+      <h2>स्कैन कर के भुगतान करें</h2>
+      <div class="qr-box" id="qrBox">QR यहाँ दिखाई देगा</div>
+      <button onclick="downloadQR()">Download PNG</button>
+      <div class="link-box" id="upiLink"></div>
+    </div>
+  </main>
+
+  <script>
+    let currentDataUrl = null;
+
+    // ✅ Fixed buildPA function
+    function buildPA(payee, handle) {
+      payee = payee.trim();
+
+      // अगर +91 से शुरू है तो हटा दो
+      if (payee.startsWith("+91")) {
+        payee = payee.slice(3);
+      }
+
+      // बीच के spaces/dash हटा दो
+      payee = payee.replace(/[^0-9a-zA-Z@.]/g, "");
+
+      // अगर सिर्फ 10 digit हैं → mobile माना जाएगा
+      if (/^\d{10}$/.test(payee)) {
+        return payee + "@" + handle;
+      }
+
+      // अगर proper VPA है (जैसे name@upi)
+      if (/.+@.+/.test(payee)) {
+        return payee.toLowerCase();
+      }
+
+      return null; // invalid
+    }
+
+    function generateQR(){
+      const payee = document.getElementById('payee').value.trim();
+      const handle = document.getElementById('handle').value;
+      const amount = document.getElementById('amount').value.trim();
+      const name = document.getElementById('name').value.trim() || "UPI Payment";
+      const note = document.getElementById('note').value.trim();
+      const errorBox = document.getElementById('error');
+      const qrBox = document.getElementById('qrBox');
+      const linkBox = document.getElementById('upiLink');
+
+      errorBox.textContent = "";
+      qrBox.innerHTML = "QR यहाँ दिखाई देगा";
+      linkBox.textContent = "";
+      currentDataUrl = null;
+
+      const pa = buildPA(payee, handle);
+      if (!pa){ errorBox.textContent="कृपया सही UPI ID या मोबाइल नंबर दर्ज करें"; return; }
+      if (!amount || Number(amount)<=0){ errorBox.textContent="Amount ₹ में 0 से अधिक होना चाहिए"; return; }
+
+      const params = new URLSearchParams();
+      params.set("pa", pa);
+      params.set("pn", name);
+      params.set("am", Number(amount).toFixed(2));
+      params.set("cu", "INR");
+      if(note) params.set("tn", note);
+
+      const url = "upi://pay?" + params.toString();
+      linkBox.textContent = url;
+
+      QRCode.toDataURL(url,{margin:1,scale:8}, function(err, dataUrl){
+        if(err){ errorBox.textContent="QR बनाने में दिक्कत आ रही है"; return; }
+        currentDataUrl = dataUrl;
+        qrBox.innerHTML = `<img src=\"${dataUrl}\" style=\"width:80%;height:80%;object-fit:contain;\"/>`;
+      });
+    }
+
+    function downloadQR(){
+      if(!currentDataUrl) return;
+      const a=document.createElement('a');
+      a.href=currentDataUrl;
+      a.download='upi-qr.png';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+  </script>
 </body>
 </html>
